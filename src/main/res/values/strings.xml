@@ -1,0 +1,14 @@
+<resources>
+    <string name="app_name">Test_aprication</string>
+    <string name="see_post_button">投稿を見る</string>
+    <string name="post_button">投稿する</string>
+    <string name="guid_text">ここに入力してね</string>
+    <string name="show_post">取得中...</string>
+    <string name="happy">happy</string>
+    <string name="sad">sad</string>
+    <string name="fun">fun</string>
+    <string name="bad">bad</string>
+    <string name="write_post">投稿を書く</string>
+    <string name="taitol_name">タイトル</string>
+    <string name="start_button">Start</string>
+</resources>
