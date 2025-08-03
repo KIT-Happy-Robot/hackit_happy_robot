@@ -7,14 +7,44 @@ import android.util.Log
 import android.view.View
 import android.widget.Button
 import android.widget.TextView
+import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import com.example.test_aprication.model.Emotion
-import com.example.test_aprication.model.Feed
+import com.example.test_aprication.model.Post
+import com.google.gson.Gson
+import org.eclipse.paho.client.mqttv3.*
+import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence
 
 class FeedActivity : AppCompatActivity() {
+
+    private lateinit var viewBox: View
+    private lateinit var viewPost: TextView
+    private lateinit var buttonWrite: Button
+    private lateinit var buttonHappy: Button
+    private lateinit var buttonSad: Button
+    private lateinit var buttonFun: Button
+    private lateinit var buttonBad: Button
+
+    private lateinit var mqttClient: MqttClient
+
+    private val BROKER_URL = "tcp://broker.hivemq.com:1883"
+    private val POST_TOPIC = "chat/broadcast"
+    private val EMOTION_TOPIC = "emotion/broadcast"
+    private val CLIENT_ID = MqttClient.generateClientId()
+
+    private var nowEmotion = Emotion(emotion = "default", level = 0)
+    private var currentPostText: String? = null
+
+    // フラグと保留変数
+    private var hasReceivedFirstPost = false
+    private var isWaitingReaction = false
+    private var pendingPost: Post? = null
+    private var pendingEmotion: Emotion? = null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -25,100 +55,203 @@ class FeedActivity : AppCompatActivity() {
             insets
         }
 
-        //書くボタンを押したらPost画面に遷移
-        val buttonWrite = findViewById<Button>(R.id.button_write)
+        viewBox = findViewById(R.id.view_box)
+        viewPost = findViewById(R.id.view_post)
+        buttonWrite = findViewById(R.id.button_write)
+        buttonHappy = findViewById(R.id.button_happy)
+        buttonSad = findViewById(R.id.button_sad)
+        buttonFun = findViewById(R.id.button_fun)
+        buttonBad = findViewById(R.id.button_bad)
+
+        initMqttClient()
+        connectMqtt()
+
         buttonWrite.setOnClickListener {
             val intent = Intent(this, PostActivity::class.java)
             startActivity(intent)
         }
 
-        //投稿を表示する
-        val feedPost = Feed(post = "", emotion = "", level = 0)
-        //テスト用データ
-        val testFeed = listOf(
-            Feed("今日も一日楽しかった！", "happy", 15),
-            Feed("アイス食べて元気出た！", "happy", 8),
-            Feed("友だちとゲームして大笑い🤣", "fun", 12),
-            Feed("授業むずかしすぎる〜", "bad", 9),
-            Feed("雨で気分さがる☔", "sad", 6),
-            Feed("宿題やり忘れた…", "bad", 14),
-            Feed("体育でヘトヘト💦", "sad", 5),
-            Feed("推しの配信で爆笑した！", "fun", 18),
-            Feed("テストで満点とった！", "happy", 20),
-            Feed("なんかモヤモヤする😶", "bad", 3),
-            Feed("先生が優しくて嬉しかった😊", "happy", 10),
-            Feed("思い出し笑いしちゃったw", "fun", 7),
-            Feed("大事なメッセージ見逃した😢", "sad", 17),
-            Feed("今日はなんか全部うまくいった！", "happy", 19),
-            Feed("楽しくおしゃべりできた", "fun", 13)
-        )
-
-        //テスト用
-        var counter = 0
-        fun test(): Int {
-            counter += 1
-            return counter
+        buttonHappy.setOnClickListener {
+            publishReaction("happy", 10)
+        }
+        buttonSad.setOnClickListener {
+            publishReaction("sad", 10)
+        }
+        buttonFun.setOnClickListener {
+            publishReaction("fun", 10)
+        }
+        buttonBad.setOnClickListener {
+            publishReaction("bad", 10)
         }
 
-        val viewPost = findViewById<TextView>(R.id.view_post)
-        val viewBox = findViewById<View>(R.id.view_box)
+        viewPost.text = "新しい投稿を待機中..."
+        updateUiColors("default", 0)
+    }
 
-        //感情レベルの処理
+    private fun initMqttClient() {
+        try {
+            mqttClient = MqttClient(BROKER_URL, CLIENT_ID, MemoryPersistence())
+            mqttClient.setCallback(object : MqttCallback {
+                override fun connectionLost(cause: Throwable?) {
+                    Log.e("MQTT", "接続切断: $cause")
+                    runOnUiThread {
+                        Toast.makeText(this@FeedActivity, "接続が切断されました", Toast.LENGTH_SHORT).show()
+                    }
+                }
+
+                override fun messageArrived(topic: String?, message: MqttMessage?) {
+                    val payload = String(message?.payload ?: ByteArray(0))
+                    Log.d("MQTT", "📩 Topic: $topic")
+                    Log.d("MQTT", "Payload: $payload")
+                    runOnUiThread {
+                        when (topic) {
+                            POST_TOPIC -> {
+                                val receivedPost = Gson().fromJson(payload, Post::class.java)
+                                if (receivedPost != null) {
+                                    if (!hasReceivedFirstPost) {
+                                        pendingPost = receivedPost
+                                        checkAndApplyFirstPost()
+                                    } else if (isWaitingReaction) {
+                                        pendingPost = receivedPost
+                                        Log.d("MQTT", "🕓 新しい投稿を保留中")
+                                        applyPendingUpdate()
+                                    } else {
+                                        Log.d("MQTT", "💡 リアクション待ちのため、投稿を無視")
+                                    }
+                                }
+                            }
+
+                            EMOTION_TOPIC -> {
+                                val receivedEmotion = Gson().fromJson(payload, Emotion::class.java)
+                                // 🆕 自分が送信した感情データは無視する
+                                if (receivedEmotion != null && receivedEmotion.senderId != CLIENT_ID) {
+                                    if (!hasReceivedFirstPost) {
+                                        pendingEmotion = receivedEmotion
+                                        checkAndApplyFirstPost()
+                                    } else if (isWaitingReaction) {
+                                        pendingEmotion = receivedEmotion
+                                        Log.d("MQTT", "🕓 新しい感情を保留中")
+                                        applyPendingUpdate()
+                                    } else {
+                                        Log.d("MQTT", "💡 リアクション待ちのため、感情を無視")
+                                    }
+                                    Toast.makeText(this@FeedActivity, "リアクションを受信しました: ${receivedEmotion.emotion}", Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                        }
+                    }
+                }
+
+                override fun deliveryComplete(token: IMqttDeliveryToken?) {
+                    Log.d("MQTT", "配信完了")
+                }
+            })
+        } catch (e: MqttException) {
+            Log.e("MQTT", "クライアント初期化エラー: ${e.message}")
+            Toast.makeText(this, "MQTTクライアント初期化エラー", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    private fun connectMqtt() {
+        val options = MqttConnectOptions()
+        options.isCleanSession = true
+        try {
+            mqttClient.connect(options)
+            mqttClient.subscribe(POST_TOPIC, 1)
+            mqttClient.subscribe(EMOTION_TOPIC, 1)
+            Log.d("MQTT", "接続成功とトピック購読: $POST_TOPIC と $EMOTION_TOPIC")
+            runOnUiThread {
+                Toast.makeText(this, "接続しました。投稿を待機中...", Toast.LENGTH_SHORT).show()
+            }
+        } catch (e: MqttException) {
+            Log.e("MQTT", "接続失敗: ${e.message}")
+            runOnUiThread {
+                Toast.makeText(this, "接続失敗: ${e.message}", Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
+    private fun publishReaction(emotion: String, level: Int) {
+        isWaitingReaction = true
+        viewPost.text = "リアクションを送信しました。新しい投稿を待機中..."
+        updateUiColors(emotion, level)
+
+        // 🆕 自分のクライアントIDを含めてメッセージを作成
+        val reaction = Emotion(emotion = emotion, level = level, senderId = CLIENT_ID)
+        val jsonPayload = Gson().toJson(reaction)
+        val mqttMessage = MqttMessage(jsonPayload.toByteArray(Charsets.UTF_8))
+        mqttMessage.qos = 1
+        mqttMessage.isRetained = false
+
+        try {
+            mqttClient.publish(EMOTION_TOPIC, mqttMessage)
+            Log.d("MQTT", "リアクション送信: $jsonPayload")
+            Toast.makeText(this, "リアクションが送信されました", Toast.LENGTH_SHORT).show()
+        } catch (e: MqttException) {
+            Log.e("MQTT", "リアクション送信失敗: ${e.message}")
+            Toast.makeText(this, "リアクション送信失敗: ${e.message}", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun checkAndApplyFirstPost() {
+        if (pendingPost != null && pendingEmotion != null && !hasReceivedFirstPost) {
+            currentPostText = pendingPost!!.text
+            viewPost.text = currentPostText
+            nowEmotion = pendingEmotion!!
+            updateUiColors(nowEmotion.emotion, nowEmotion.level)
+
+            hasReceivedFirstPost = true
+            pendingPost = null
+            pendingEmotion = null
+
+            Log.d("MQTT", "🎉 初回投稿と感情を反映")
+        }
+    }
+
+    private fun applyPendingUpdate() {
+        if (pendingPost != null && pendingEmotion != null) {
+            currentPostText = pendingPost!!.text
+            viewPost.text = currentPostText
+            nowEmotion = pendingEmotion!!
+            updateUiColors(nowEmotion.emotion, nowEmotion.level)
+
+            pendingPost = null
+            pendingEmotion = null
+            isWaitingReaction = false
+            Log.d("MQTT", "🆕 保留中の投稿と感情を反映")
+        }
+    }
+
+    private fun updateUiColors(emotion: String, level: Int) {
+        val happyColor = ContextCompat.getColor(this, R.color.happy)
+        val sadColor = ContextCompat.getColor(this, R.color.sad)
+        val funColor = ContextCompat.getColor(this, R.color.enjoy)
+        val badColor = ContextCompat.getColor(this, R.color.bad)
+
         fun levelToAlpha(level: Int): Int {
             return ((level / 20.0) * 205 + 50).toInt()
         }
-        //post表示関数。
-        fun displayPost(view: View, textView: TextView, post: String, emotion: String, level: Int) {
-            textView.text = post
-            val color = when (emotion.lowercase()) {
-                "happy" -> Color.argb(levelToAlpha(level), 255, 235, 59)     // 黄色💛
-                "sad"   -> Color.argb(levelToAlpha(level), 33, 150, 243)     // 青💙
-                "fun"   -> Color.argb(levelToAlpha(level), 76, 175, 80)      // 緑💚
-                else    -> Color.argb(levelToAlpha(level), 244, 67, 54)      // 赤❤️
+
+        val color = when (emotion.lowercase()) {
+            "happy" -> Color.argb(levelToAlpha(level), Color.red(happyColor), Color.green(happyColor), Color.blue(happyColor))
+            "sad" -> Color.argb(levelToAlpha(level), Color.red(sadColor), Color.green(sadColor), Color.blue(sadColor))
+            "fun" -> Color.argb(levelToAlpha(level), Color.red(funColor), Color.green(funColor), Color.blue(funColor))
+            "bad" -> Color.argb(levelToAlpha(level), Color.red(badColor), Color.green(badColor), Color.blue(badColor))
+            else -> Color.GRAY
+        }
+
+        viewBox.setBackgroundColor(color)
+        buttonWrite.setBackgroundColor(color)
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        if (::mqttClient.isInitialized && mqttClient.isConnected) {
+            try {
+                mqttClient.disconnect()
+            } catch (e: MqttException) {
+                e.printStackTrace()
             }
-            view.setBackgroundColor(color)
-            buttonWrite.setBackgroundColor(color)
         }
-
-        val firstPost = testFeed[0]
-        displayPost(viewBox, viewPost, firstPost.post, firstPost.emotion, firstPost.level)
-
-        //リアクションボタンを押したらemotionデータを作る
-        val buttonHappy = findViewById<Button>(R.id.button_happy)
-        val buttonSad = findViewById<Button>(R.id.button_sad)
-        val buttonFun = findViewById<Button>(R.id.button_fun)
-        val buttonBad = findViewById<Button>(R.id.button_bad)
-        buttonHappy.setOnClickListener {
-            val reaction = Emotion(emotion = "", level = 0)
-            reaction.emotion = "happy"
-            reaction.level = 10
-            Log.d("emotion", reaction.toString())
-            displayPost(viewBox, viewPost, testFeed[test()].post, testFeed[test()].emotion, testFeed[test()].level)
-        }
-        buttonSad.setOnClickListener {
-            val reaction = Emotion(emotion = "", level = 0)
-            reaction.emotion = "sad"
-            reaction.level = 10
-            Log.d("emotion", reaction.toString())
-            val num = test()
-            displayPost(viewBox, viewPost, testFeed[num].post, testFeed[num].emotion, testFeed[num].level)
-        }
-        buttonFun.setOnClickListener {
-            val reaction = Emotion(emotion = "", level = 0)
-            reaction.emotion = "fun"
-            reaction.level = 10
-            Log.d("emotion", reaction.toString())
-            val num = test()
-            displayPost(viewBox, viewPost, testFeed[num].post, testFeed[num].emotion, testFeed[num].level)
-        }
-        buttonBad.setOnClickListener {
-            val reaction = Emotion(emotion = "", level = 0)
-            reaction.emotion = "Bad"
-            reaction.level = 10
-            Log.d("emotion", reaction.toString())
-            val num = test()
-            displayPost(viewBox, viewPost, testFeed[num].post, testFeed[num].emotion, testFeed[num].level)
-        }
-
     }
 }

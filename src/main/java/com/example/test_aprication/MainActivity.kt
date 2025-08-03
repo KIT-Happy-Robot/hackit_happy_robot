@@ -30,8 +30,10 @@ class MainActivity : AppCompatActivity() {
         userId = getOrCreateUserId()
         Log.d("UserId", userId)
 
-        //スタートボタンを押したらPost画面に遷移
+
         val buttonStart = findViewById<Button>(R.id.button_start)
+
+        //スタートボタンを押したらPost画面に遷移
         buttonStart.setOnClickListener {
             val intent = Intent(this, PostActivity::class.java)
             startActivity(intent)

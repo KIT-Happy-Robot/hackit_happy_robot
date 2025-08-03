@@ -11,4 +11,5 @@
     <string name="write_post">投稿を書く</string>
     <string name="taitol_name">タイトル</string>
     <string name="start_button">Start</string>
+    <string name="net_status">接続状態: 未接続</string>
 </resources>
