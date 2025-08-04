@@ -1,8 +1,8 @@
 #include "WiFiS3.h"
 
 // ▼▼▼ 1. Wi-Fi設定 ▼▼▼
-const char ssid[] = "KIT-GUEST";
-const char pass[] = "Sy3nDHRp";
+const char ssid[] = "";
+const char pass[] = "";
 // ▲▲▲ ▲▲▲
 
 // ▼▼▼ 2. アクセスしたいURLを設定 ▼▼▼
