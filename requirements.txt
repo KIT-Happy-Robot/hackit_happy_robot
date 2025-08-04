@@ -1,0 +1,13 @@
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch==2.3.0
+transformers==4.42.1
+sentence-transformers==2.7.0
+huggingface-hub  # <- この行のバージョン指定を削除
+numpy==1.26.4
+fugashi[unidic-lite]
+protobuf==5.27.0
+fastapi
+uvicorn[standard]
+paho-mqtt
+gunicorn
+pydantic
