@@ -1,9 +1,9 @@
 # hackit_happy_robot
 
+## 担当ブランチ
 
-ブランチで分かれています
-namikawa → fastapi,word2vec
-ushiki → android
-kawai → moter制御
-mizuno → センサー制御
-morohashi → 音声関係
+* **namikawa** → FastAPI, word2vec
+* **ushiki** → Android
+* **kawai** → モーター制御
+* **mizuno** → センサー制御
+* **morohashi** → 音声関係
