@@ -26,8 +26,8 @@ int counter12;
 
  
 // wifiのSSIDとパスワード
-const char* SSID     = "KIT-GUEST";
-const char* PASSWORD = "Sy3nDHRp";
+const char* SSID     = "";
+const char* PASSWORD = "";
 
 // サーバのURL
 const char* BROKER = "broker.hivemq.com";
