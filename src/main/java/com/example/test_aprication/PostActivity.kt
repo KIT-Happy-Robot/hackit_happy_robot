@@ -8,7 +8,6 @@ import android.util.Log
 import android.view.View
 import android.widget.Button
 import android.widget.EditText
-import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
@@ -28,33 +27,20 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import org.eclipse.paho.client.mqttv3.*
 import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence
 import java.io.IOException
-import java.util.*
 
 class PostActivity : AppCompatActivity() {
 
-    // UI要素
     private lateinit var viewBox: View
     private lateinit var buttonPost: Button
     private lateinit var buttonSee: Button
     private lateinit var editPost: EditText
-    private lateinit var statusTextView: TextView
-
-    // MQTTクライアント
     private lateinit var mqttClient: MqttClient
-
-    // HTTPクライアント
     private val okHttpClient = OkHttpClient()
-
-    // MQTT設定
     private val BROKER_URL = "tcp://broker.hivemq.com:1883"
     private val TOPIC = "emotion/broadcast"
     private val CLIENT_ID = MqttClient.generateClientId()
-
-    // EmotionデータとPostデータ
     private var nowEmotion = Emotion(emotion = "default", level = 0)
     private var newPost = Post(user = "", text = "")
-
-    // リアクションデータを受信するまで待機するための変数
     private var emotionDeferred: CompletableDeferred<Emotion>? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -67,17 +53,13 @@ class PostActivity : AppCompatActivity() {
             insets
         }
 
-        // UI要素の初期化
         viewBox = findViewById(R.id.view_box)
         buttonPost = findViewById(R.id.button_post)
         buttonSee = findViewById(R.id.button_see)
         editPost = findViewById(R.id.edit_post)
-        statusTextView = findViewById(R.id.statusTextView)
 
-        // MQTTクライアントの初期化
         initMqttClient()
 
-        // 投稿ボタンのクリックリスナーを設定
         buttonPost.setOnClickListener {
             if (mqttClient.isConnected) {
                 buttonPost.isEnabled = false
@@ -88,7 +70,6 @@ class PostActivity : AppCompatActivity() {
                 val prefs = getSharedPreferences("user_prefs", Context.MODE_PRIVATE)
                 newPost.user = prefs.getString("user_id", "") ?: ""
 
-                // MQTTで投稿を送信する代わりに、HTTP POSTリクエストを送信
                 sendPostToHttpServer(newPost)
                 editPost.setText("")
 
@@ -130,7 +111,6 @@ class PostActivity : AppCompatActivity() {
                 override fun connectionLost(cause: Throwable?) {
                     Log.e("MQTT", "接続切断: $cause")
                     runOnUiThread {
-                        statusTextView.text = "接続状態: 未接続"
                         Toast.makeText(this@PostActivity, "接続が切断されました", Toast.LENGTH_SHORT).show()
                     }
                 }
@@ -165,18 +145,15 @@ class PostActivity : AppCompatActivity() {
         val options = MqttConnectOptions()
         options.isCleanSession = true
         try {
-            statusTextView.text = "接続状態: 接続中..."
             mqttClient.connect(options)
             mqttClient.subscribe(TOPIC, 1)
             Log.d("MQTT", "接続成功とトピック購読: $TOPIC")
             runOnUiThread {
-                statusTextView.text = "接続状態: 接続済み"
                 Toast.makeText(this, "接続しました。リアクションを待機中...", Toast.LENGTH_SHORT).show()
             }
         } catch (e: MqttException) {
             Log.e("MQTT", "接続失敗: ${e.message}")
             runOnUiThread {
-                statusTextView.text = "接続状態: 接続失敗"
                 Toast.makeText(this, "接続失敗: ${e.message}", Toast.LENGTH_LONG).show()
             }
         }
@@ -189,13 +166,12 @@ class PostActivity : AppCompatActivity() {
         return result
     }
 
-    // 新しい関数: HTTP POSTリクエストを送信
     private fun sendPostToHttpServer(postData: Post) {
         val jsonPayload = Gson().toJson(postData)
         val mediaType = "application/json; charset=utf-8".toMediaType()
         val body = jsonPayload.toRequestBody(mediaType)
         val request = Request.Builder()
-            .url("https://hackitserver-563679032017.asia-east1.run.app/send_chat")
+            .url("http://172.18.28.55:8000/send_chat")
             .post(body)
             .build()
 
@@ -224,13 +200,6 @@ class PostActivity : AppCompatActivity() {
         })
     }
 
-    // 元の publishPost 関数は今回は使用しません
-    /*
-    private fun publishPost(postData: Post) {
-        // ... MQTTでのパブリッシュ処理
-    }
-    */
-
     private fun updateUiColors() {
         val happyColor = ContextCompat.getColor(this, R.color.happy)
         val sadColor = ContextCompat.getColor(this, R.color.sad)
@@ -251,9 +220,14 @@ class PostActivity : AppCompatActivity() {
             else    -> Color.GRAY
         }
 
+        val viewHeader = findViewById<View>(R.id.view_header)
+        val viewFooter = findViewById<View>(R.id.view_footer)
+
         viewBox.setBackgroundColor(color)
         buttonPost.setBackgroundColor(color)
         buttonSee.setBackgroundColor(color)
+        viewHeader.setBackgroundColor(color)
+        viewFooter.setBackgroundColor(color)
     }
 
     override fun onDestroy() {

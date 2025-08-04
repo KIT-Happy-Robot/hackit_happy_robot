@@ -28,18 +28,13 @@ class FeedActivity : AppCompatActivity() {
     private lateinit var buttonSad: Button
     private lateinit var buttonFun: Button
     private lateinit var buttonBad: Button
-
     private lateinit var mqttClient: MqttClient
-
     private val BROKER_URL = "tcp://broker.hivemq.com:1883"
     private val POST_TOPIC = "chat/broadcast"
     private val EMOTION_TOPIC = "emotion/broadcast"
     private val CLIENT_ID = MqttClient.generateClientId()
-
     private var nowEmotion = Emotion(emotion = "default", level = 0)
     private var currentPostText: String? = null
-
-    // フラグと保留変数
     private var hasReceivedFirstPost = false
     private var isWaitingReaction = false
     private var pendingPost: Post? = null
@@ -58,10 +53,10 @@ class FeedActivity : AppCompatActivity() {
         viewBox = findViewById(R.id.view_box)
         viewPost = findViewById(R.id.view_post)
         buttonWrite = findViewById(R.id.button_write)
-        buttonHappy = findViewById(R.id.button_happy)
-        buttonSad = findViewById(R.id.button_sad)
-        buttonFun = findViewById(R.id.button_fun)
-        buttonBad = findViewById(R.id.button_bad)
+        buttonHappy = findViewById(R.id.button_happy_top_left)
+        buttonSad = findViewById(R.id.button_sad_bottom_left)
+        buttonFun = findViewById(R.id.button_fun_top_right)
+        buttonBad = findViewById(R.id.button_bad_bottom_right)
 
         initMqttClient()
         connectMqtt()
@@ -113,27 +108,26 @@ class FeedActivity : AppCompatActivity() {
                                         checkAndApplyFirstPost()
                                     } else if (isWaitingReaction) {
                                         pendingPost = receivedPost
-                                        Log.d("MQTT", "🕓 新しい投稿を保留中")
+                                        Log.d("MQTT", "保留中")
                                         applyPendingUpdate()
                                     } else {
-                                        Log.d("MQTT", "💡 リアクション待ちのため、投稿を無視")
+                                        Log.d("MQTT", "リアクション待ち")
                                     }
                                 }
                             }
 
                             EMOTION_TOPIC -> {
                                 val receivedEmotion = Gson().fromJson(payload, Emotion::class.java)
-                                // 🆕 自分が送信した感情データは無視する
                                 if (receivedEmotion != null && receivedEmotion.senderId != CLIENT_ID) {
                                     if (!hasReceivedFirstPost) {
                                         pendingEmotion = receivedEmotion
                                         checkAndApplyFirstPost()
                                     } else if (isWaitingReaction) {
                                         pendingEmotion = receivedEmotion
-                                        Log.d("MQTT", "🕓 新しい感情を保留中")
+                                        Log.d("MQTT", "保留中")
                                         applyPendingUpdate()
                                     } else {
-                                        Log.d("MQTT", "💡 リアクション待ちのため、感情を無視")
+                                        Log.d("MQTT", "リアクション待ち")
                                     }
                                     Toast.makeText(this@FeedActivity, "リアクションを受信しました: ${receivedEmotion.emotion}", Toast.LENGTH_SHORT).show()
                                 }
@@ -176,7 +170,6 @@ class FeedActivity : AppCompatActivity() {
         viewPost.text = "リアクションを送信しました。新しい投稿を待機中..."
         updateUiColors(emotion, level)
 
-        // 🆕 自分のクライアントIDを含めてメッセージを作成
         val reaction = Emotion(emotion = emotion, level = level, senderId = CLIENT_ID)
         val jsonPayload = Gson().toJson(reaction)
         val mqttMessage = MqttMessage(jsonPayload.toByteArray(Charsets.UTF_8))
@@ -240,8 +233,14 @@ class FeedActivity : AppCompatActivity() {
             else -> Color.GRAY
         }
 
+        val viewHeader = findViewById<View>(R.id.view_header)
+        val viewFooter = findViewById<View>(R.id.view_footer)
+
         viewBox.setBackgroundColor(color)
         buttonWrite.setBackgroundColor(color)
+        viewHeader.setBackgroundColor(color)
+        viewFooter.setBackgroundColor(color)
+
     }
 
     override fun onDestroy() {

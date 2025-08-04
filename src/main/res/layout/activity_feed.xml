@@ -8,18 +8,50 @@
     tools:context=".FeedActivity"
     android:background="@color/white">
 
+    <ImageView
+        android:id="@+id/haikei"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:src="@drawable/haikei"
+        android:scaleType="centerCrop"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+    <View
+        android:id="@+id/view_header"
+        android:layout_width="0dp"
+        android:layout_height="56dp"
+        android:background="@color/white"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <View
+        android:id="@+id/view_footer"
+        android:layout_width="0dp"
+        android:layout_height="20dp"
+        android:layout_marginTop="676dp"
+        android:background="@color/white"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="1.0"
+        app:layout_constraintStart_toStartOf="parent" />
+
     <View
         android:id="@+id/view_box"
         android:layout_width="360dp"
         android:layout_height="360dp"
         android:layout_marginStart="24dp"
         android:layout_marginEnd="24dp"
+        app:layout_constraintBottom_toTopOf="@id/button_happy_top_left"
         app:layout_constraintDimensionRatio="1:1"
-        app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.333"
+        app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintBottom_toTopOf="@id/button_happy"
-        app:layout_constraintVertical_bias="0.5"/>
+        app:layout_constraintVertical_bias="0.791" />
 
     <TextView
         android:id="@+id/view_post"
@@ -27,73 +59,97 @@
         android:layout_height="340dp"
         android:background="@color/white"
         android:text="@string/show_post"
-        android:textSize="18sp"
+        android:textSize="16dp"
         android:padding="16dp"
         android:textColor="@color/black"
+        android:gravity="center"
+        android:justificationMode="inter_word"
         app:layout_constraintTop_toTopOf="@id/view_box"
         app:layout_constraintBottom_toBottomOf="@id/view_box"
         app:layout_constraintStart_toStartOf="@id/view_box"
         app:layout_constraintEnd_toEndOf="@id/view_box"/>
 
     <Button
-        android:id="@+id/button_happy"
-        android:layout_width="wrap_content"
+        android:id="@+id/button_fun_top_right"
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:text="@string/happy"
-        android:backgroundTint="@color/happy"
-        android:textColor="@color/black"
-        android:layout_marginBottom="16dp"
-        app:layout_constraintBottom_toTopOf="@id/button_write"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toStartOf="@id/button_sad"/>
-
-    <Button
-        android:id="@+id/button_sad"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="@string/sad"
-        android:backgroundTint="@color/sad"
-        android:textColor="@color/black"
-        android:layout_marginBottom="16dp"
-        app:layout_constraintBottom_toTopOf="@id/button_write"
-        app:layout_constraintStart_toEndOf="@id/button_happy"
-        app:layout_constraintEnd_toStartOf="@id/button_fun"/>
-
-    <Button
-        android:id="@+id/button_fun"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="@string/fun"
+        android:layout_marginStart="8dp"
+        android:layout_marginEnd="16dp"
+        android:layout_marginBottom="12dp"
         android:backgroundTint="@color/enjoy"
+        android:text="@string/fun"
         android:textColor="@color/black"
-        android:layout_marginBottom="16dp"
-        app:layout_constraintBottom_toTopOf="@id/button_write"
-        app:layout_constraintStart_toEndOf="@id/button_sad"
-        app:layout_constraintEnd_toStartOf="@id/button_bad"/>
+        android:textSize="20sp"
+        app:layout_constraintBottom_toTopOf="@+id/button_bad_bottom_right"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toEndOf="@+id/button_happy_top_left" />
 
     <Button
-        android:id="@+id/button_bad"
-        android:layout_width="wrap_content"
+        android:id="@+id/button_happy_top_left"
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:text="@string/bad"
-        android:backgroundTint="@color/bad"
+        android:layout_marginStart="16dp"
+        android:layout_marginBottom="12dp"
+        android:backgroundTint="@color/happy"
+        android:text="@string/happy"
         android:textColor="@color/black"
-        android:layout_marginBottom="16dp"
-        app:layout_constraintBottom_toTopOf="@id/button_write"
-        app:layout_constraintStart_toEndOf="@id/button_fun"
-        app:layout_constraintEnd_toEndOf="parent"/>
+        android:textSize="20sp"
+        app:layout_constraintBottom_toTopOf="@+id/button_sad_bottom_left"
+        app:layout_constraintEnd_toStartOf="@+id/button_fun_top_right"
+        app:layout_constraintHorizontal_chainStyle="spread"
+        app:layout_constraintStart_toStartOf="parent" />
 
+    <Button
+        android:id="@+id/button_bad_bottom_right"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
+        android:layout_marginEnd="16dp"
+        android:layout_marginBottom="44dp"
+        android:backgroundTint="@color/bad"
+        android:text="@string/bad"
+        android:textColor="@color/black"
+        android:textSize="20sp"
+        app:layout_constraintBottom_toTopOf="@id/button_write"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toEndOf="@+id/button_sad_bottom_left" />
+
+    <Button
+        android:id="@+id/button_sad_bottom_left"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginBottom="44dp"
+        android:backgroundTint="@color/sad"
+        android:text="@string/sad"
+        android:textColor="@color/black"
+        android:textSize="20sp"
+        app:layout_constraintBottom_toTopOf="@id/button_write"
+        app:layout_constraintEnd_toStartOf="@+id/button_bad_bottom_right"
+        app:layout_constraintStart_toStartOf="parent" />
 
     <Button
         android:id="@+id/button_write"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="@string/write_post"
-        android:backgroundTint="@color/button_color_selector"
-        android:textColor="@color/black"
-        android:layout_marginBottom="16dp"
         android:layout_marginEnd="16dp"
+        android:layout_marginBottom="50dp"
+        android:backgroundTint="@color/button_color_selector"
+        android:text="@string/write_post"
+        android:textColor="@color/black"
         app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"/>
+        app:layout_constraintEnd_toEndOf="parent" />
+
+    <ImageView
+        android:id="@+id/my_image"
+        android:layout_width="90dp"
+        android:layout_height="90dp"
+        android:scaleType="centerCrop"
+        android:src="@drawable/hato"
+        app:layout_constraintBottom_toTopOf="@+id/view_box"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.887"
+        app:layout_constraintStart_toStartOf="parent" />
+
 
 </androidx.constraintlayout.widget.ConstraintLayout>
